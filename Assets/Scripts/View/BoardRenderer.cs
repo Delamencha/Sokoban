@@ -85,6 +85,11 @@ namespace Sokoban
             FitCamera(level.width, level.height);
         }
 
+        public void ClearBoard()
+        {
+            Clear();
+        }
+
         public Vector2Int WorldToGrid(Vector3 worldPosition)
         {
             return new Vector2Int(Mathf.RoundToInt(worldPosition.x), Mathf.RoundToInt(worldPosition.y));

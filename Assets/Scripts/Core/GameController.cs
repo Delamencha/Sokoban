@@ -17,17 +17,21 @@ namespace Sokoban
         private bool gameActive;
         private bool editorMode;
         private bool saveProgressForCurrentLevel;
+        private bool currentLevelSolved;
+        private bool useRuntimeInfoPanel;
+        private bool useRuntimeMainMenu;
+        private bool useRuntimeLevelList;
 
         [SerializeField] private bool showInfoPanelOnStartPage = true;
         [SerializeField] private MainMenuView mainMenuView;
         [SerializeField] private PopUpView popUpView;
+        [SerializeField] private CommonMenuView commonMenuView;
+        [SerializeField] private CommonEditorMenuView commonEditorMenuView;
+        [SerializeField] private PlayHudView playHudView;
+        [SerializeField] private LevelListView levelListView;
 
         private GameObject infoPanel;
         private RectTransform infoPanelRect;
-        private Text titleText;
-        private Text statusText;
-        private GameObject levelListScrollPanel;
-        private Transform levelListContent;
         private GameObject playPanel;
         private GameObject editorScrollPanel;
         private GameObject editorPanel;
@@ -56,6 +60,17 @@ namespace Sokoban
 
             if (editorMode)
             {
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    ToggleCommonEditorMenu();
+                    return;
+                }
+
+                if (commonEditorMenuView != null && commonEditorMenuView.IsVisible)
+                {
+                    return;
+                }
+
                 if (Input.GetMouseButton(0) && !IsPointerOverUi())
                 {
                     levelEditor.TryPaintFromScreenPosition(Input.mousePosition);
@@ -64,7 +79,18 @@ namespace Sokoban
                 return;
             }
 
-            if (InputController.TryGetMoveDirection(out Vector2Int direction))
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                ToggleCommonMenu();
+                return;
+            }
+
+            if (commonMenuView != null && commonMenuView.IsVisible)
+            {
+                return;
+            }
+
+            if (!currentLevelSolved && InputController.TryGetMoveDirection(out Vector2Int direction))
             {
                 MoveResult result = boardModel.TryMove(direction);
                 if (result != MoveResult.Blocked)
@@ -76,7 +102,8 @@ namespace Sokoban
                     }
                     else
                     {
-                        SetStatus("移动：" + result);
+                        //SetStatus("移动：" + result);
+                        //SetStatus(" ");
                     }
                 }
             }
@@ -118,19 +145,26 @@ namespace Sokoban
             boardModel.Load(level);
             boardRenderer.Render(boardModel);
             saveProgressForCurrentLevel = true;
+            currentLevelSolved = false;
             ConfigureInfoPanelForDefaultPage();
-            titleText.text = level.displayName;
-            SetStatus("WASD/方向键移动，Z 撤销，R 重开。");
+            SetLevelName(level.displayName);
+            SetOperationHint("WASD/方向键移动，Z 撤销，R 重开，ESC 菜单。");
+            SetStatus("正在游玩。");
         }
 
         private void ShowStartPage()
         {
             gameActive = false;
             editorMode = false;
+            saveProgressForCurrentLevel = false;
+            currentLevelSolved = false;
+            boardRenderer.ClearBoard();
             ConfigureInfoPanelForStartPage();
+            HideCommonMenu();
+            HideCommonEditorMenu();
             mainMenuView.Show();
-            levelListScrollPanel.SetActive(false);
-            playPanel.SetActive(false);
+            levelListView.Hide();
+            SetPlayPanelVisible(false);
             editorScrollPanel.SetActive(false);
 
             if (!GameProgressSaveSystem.HasProgress())
@@ -151,11 +185,13 @@ namespace Sokoban
         {
             ReloadLevels();
             mainMenuView.Hide();
-            levelListScrollPanel.SetActive(false);
-            playPanel.SetActive(true);
+            levelListView.Hide();
+            SetPlayPanelVisible(false);
             editorScrollPanel.SetActive(false);
             editorMode = false;
             gameActive = true;
+            HideCommonMenu();
+            HideCommonEditorMenu();
             LoadLevel(GameProgressSaveSystem.GetContinueLevelIndex(levels));
         }
 
@@ -173,46 +209,30 @@ namespace Sokoban
         private void ShowLevelList()
         {
             ReloadLevels();
-            RebuildLevelList();
+            levelListView.Rebuild(levels, GameProgressSaveSystem.IsLevelCompleted, StartSelectedLevel);
             ConfigureInfoPanelForDefaultPage();
+            HideCommonMenu();
+            HideCommonEditorMenu();
             mainMenuView.Hide();
-            levelListScrollPanel.SetActive(true);
-            playPanel.SetActive(false);
+            SetRuntimePanelVisible(useRuntimeInfoPanel || useRuntimeLevelList);
+            levelListView.Show();
+            SetPlayPanelVisible(false);
             editorScrollPanel.SetActive(false);
-            titleText.text = "关卡列表";
+            SetLevelName("关卡列表");
+            SetOperationHint(string.Empty);
             SetStatus("点击关卡可直接开始游玩。");
-        }
-
-        private void RebuildLevelList()
-        {
-            ClearChildren(levelListContent);
-
-            if (levels.Count == 0)
-            {
-                CreateText("Empty Level List", levelListContent, "当前没有可用关卡", 16, TextAnchor.MiddleLeft);
-                CreateButton("返回开始页面", levelListContent, ShowStartPage);
-                return;
-            }
-
-            for (int i = 0; i < levels.Count; i++)
-            {
-                int levelIndex = i;
-                string state = GameProgressSaveSystem.IsLevelCompleted(levels[i]) ? "已完成" : "未完成";
-                string label = (i + 1) + ". " + levels[i].displayName + " - " + state;
-                CreateButton(label, levelListContent, () => StartSelectedLevel(levelIndex));
-            }
-
-            CreateButton("返回开始页面", levelListContent, ShowStartPage);
         }
 
         private void StartSelectedLevel(int levelIndex)
         {
-            levelListScrollPanel.SetActive(false);
+            levelListView.Hide();
             mainMenuView.Hide();
-            playPanel.SetActive(true);
+            SetPlayPanelVisible(false);
             editorScrollPanel.SetActive(false);
             editorMode = false;
             gameActive = true;
+            HideCommonMenu();
+            HideCommonEditorMenu();
             LoadLevel(levelIndex);
         }
 
@@ -240,12 +260,33 @@ namespace Sokoban
             {
                 SetStatus("试玩关卡完成！试玩不会写入通关进度。");
             }
+
+            currentLevelSolved = true;
+            ShowLevelCompletePopup();
+        }
+
+        private void ShowLevelCompletePopup()
+        {
+            if (popUpView == null)
+            {
+                return;
+            }
+
+            bool isLastLevel = currentLevelIndex >= levels.Count - 1;
+            if (isLastLevel)
+            {
+                popUpView.Show("完成关卡！", "返回主界面", "取消", ShowStartPage);
+                return;
+            }
+
+            popUpView.Show("完成关卡！", "下一关", "取消", () => LoadLevel(currentLevelIndex + 1));
         }
 
         private void RestartLevel()
         {
             boardModel.Restart();
             boardRenderer.Render(boardModel);
+            currentLevelSolved = false;
             SetStatus("已重开当前关卡。");
         }
 
@@ -262,14 +303,131 @@ namespace Sokoban
             }
         }
 
+        private void ToggleCommonMenu()
+        {
+            if (commonMenuView == null)
+            {
+                return;
+            }
+
+            if (commonMenuView.IsVisible)
+            {
+                commonMenuView.Hide();
+            }
+            else
+            {
+                commonMenuView.Show();
+            }
+        }
+
+        private void HideCommonMenu()
+        {
+            if (commonMenuView != null)
+            {
+                commonMenuView.Hide();
+            }
+        }
+
+        private void ReturnToGame()
+        {
+            HideCommonMenu();
+        }
+
+        private void ReturnToTitlePage()
+        {
+            HideCommonMenu();
+            ShowStartPage();
+        }
+
+        private void LoadPreviousLevelFromCommonMenu()
+        {
+            HideCommonMenu();
+            LoadLevel(currentLevelIndex - 1);
+        }
+
+        private void LoadNextLevelFromCommonMenu()
+        {
+            HideCommonMenu();
+            LoadLevel(currentLevelIndex + 1);
+        }
+
+        private void RestartLevelFromCommonMenu()
+        {
+            HideCommonMenu();
+            RestartLevel();
+        }
+
+        private void EnterEditorFromCommonMenu()
+        {
+            HideCommonMenu();
+            EnterEditor();
+        }
+
+        private void ToggleCommonEditorMenu()
+        {
+            if (commonEditorMenuView == null)
+            {
+                return;
+            }
+
+            if (commonEditorMenuView.IsVisible)
+            {
+                commonEditorMenuView.Hide();
+            }
+            else
+            {
+                commonEditorMenuView.Show();
+            }
+        }
+
+        private void HideCommonEditorMenu()
+        {
+            if (commonEditorMenuView != null)
+            {
+                commonEditorMenuView.Hide();
+            }
+        }
+
+        private void ReturnToEditor()
+        {
+            HideCommonEditorMenu();
+        }
+
+        private void ReturnToTitlePageFromEditor()
+        {
+            HideCommonEditorMenu();
+            ShowStartPage();
+        }
+
+        private void TestLevelFromEditorMenu()
+        {
+            HideCommonEditorMenu();
+            SetStatus("试玩功能入口已预留。");
+        }
+
+        private void SaveLevelFromEditorMenu()
+        {
+            HideCommonEditorMenu();
+            SetStatus("保存关卡功能入口已预留。");
+        }
+
+        private void DeleteLevelFromEditorMenu()
+        {
+            HideCommonEditorMenu();
+            SetStatus("删除关卡功能入口已预留。");
+        }
+
         private void EnterEditor()
         {
             gameActive = false;
             editorMode = true;
             ConfigureInfoPanelForDefaultPage();
+            HideCommonMenu();
+            HideCommonEditorMenu();
             mainMenuView.Hide();
-            levelListScrollPanel.SetActive(false);
-            playPanel.SetActive(false);
+            levelListView.Hide();
+            SetPlayPanelVisible(false);
+            SetRuntimePanelVisible(true);
             editorScrollPanel.SetActive(true);
             saveProgressForCurrentLevel = false;
 
@@ -280,7 +438,8 @@ namespace Sokoban
             nameInput.text = source.displayName;
             widthInput.text = source.width.ToString();
             heightInput.text = source.height.ToString();
-            titleText.text = "关卡编辑器";
+            SetLevelName("关卡编辑器");
+            SetOperationHint("鼠标绘制关卡，ESC 菜单。");
             SetStatus("选择工具后在棋盘上拖拽绘制。");
         }
 
@@ -289,8 +448,10 @@ namespace Sokoban
             gameActive = true;
             editorMode = false;
             editorScrollPanel.SetActive(false);
-            levelListScrollPanel.SetActive(false);
-            playPanel.SetActive(true);
+            levelListView.Hide();
+            SetPlayPanelVisible(false);
+            HideCommonMenu();
+            HideCommonEditorMenu();
             LoadLevel(currentLevelIndex);
         }
 
@@ -306,7 +467,7 @@ namespace Sokoban
             levelEditor.CreateBlank(width, height);
             levelEditor.CurrentLevel.displayName = string.IsNullOrWhiteSpace(nameInput.text) ? "Custom Level" : nameInput.text;
             levelEditor.CurrentLevel.id = CreateId(levelEditor.CurrentLevel.displayName);
-            titleText.text = "关卡编辑器";
+            SetLevelName("关卡编辑器");
         }
 
         private void SaveEditorLevel()
@@ -338,22 +499,42 @@ namespace Sokoban
 
             editorMode = false;
             editorScrollPanel.SetActive(false);
-            levelListScrollPanel.SetActive(false);
-            playPanel.SetActive(true);
+            levelListView.Hide();
+            SetPlayPanelVisible(false);
             gameActive = true;
+            HideCommonMenu();
+            HideCommonEditorMenu();
             boardModel.Load(levelEditor.CurrentLevel.Clone());
             boardRenderer.Render(boardModel);
             saveProgressForCurrentLevel = false;
+            currentLevelSolved = false;
             ConfigureInfoPanelForDefaultPage();
-            titleText.text = levelEditor.CurrentLevel.displayName + " (试玩)";
+            SetLevelName(levelEditor.CurrentLevel.displayName + " (试玩)");
+            SetOperationHint("WASD/方向键移动，Z 撤销，R 重开，ESC菜单。");
             SetStatus("正在试玩编辑中的关卡。保存后会出现在关卡列表中。");
         }
 
         private void SetStatus(string message)
         {
-            if (statusText != null)
+            if (playHudView != null)
             {
-                statusText.text = message;
+                playHudView.SetStatus(message);
+            }
+        }
+
+        private void SetLevelName(string levelName)
+        {
+            if (playHudView != null)
+            {
+                playHudView.SetLevelName(levelName);
+            }
+        }
+
+        private void SetOperationHint(string operationHint)
+        {
+            if (playHudView != null)
+            {
+                playHudView.SetOperationHint(operationHint);
             }
         }
 
@@ -375,8 +556,12 @@ namespace Sokoban
                 return;
             }
 
-            infoPanel.SetActive(showInfoPanelOnStartPage);
-            titleText.gameObject.SetActive(false);
+            infoPanel.SetActive((useRuntimeInfoPanel && showInfoPanelOnStartPage) || useRuntimeMainMenu);
+            if (playHudView != null)
+            {
+                playHudView.SetLevelNameVisible(false);
+                playHudView.SetOperationHint(string.Empty);
+            }
 
             infoPanelRect.anchorMin = new Vector2(1f, 0f);
             infoPanelRect.anchorMax = new Vector2(1f, 0f);
@@ -392,14 +577,33 @@ namespace Sokoban
                 return;
             }
 
-            infoPanel.SetActive(true);
-            titleText.gameObject.SetActive(true);
+            infoPanel.SetActive(useRuntimeInfoPanel);
+            if (playHudView != null)
+            {
+                playHudView.SetLevelNameVisible(true);
+            }
 
             infoPanelRect.anchorMin = new Vector2(0f, 0f);
             infoPanelRect.anchorMax = new Vector2(0f, 1f);
             infoPanelRect.pivot = new Vector2(0.5f, 0.5f);
             infoPanelRect.sizeDelta = new Vector2(280f, 0f);
             infoPanelRect.anchoredPosition = new Vector2(140f, 0f);
+        }
+
+        private void SetRuntimePanelVisible(bool visible)
+        {
+            if (infoPanel != null)
+            {
+                infoPanel.SetActive(visible);
+            }
+        }
+
+        private void SetPlayPanelVisible(bool visible)
+        {
+            if (playPanel != null)
+            {
+                playPanel.SetActive(false);
+            }
         }
 
         private void CreateUi()
@@ -411,6 +615,10 @@ namespace Sokoban
             scaler.referenceResolution = new Vector2(1280, 720);
             canvas.gameObject.AddComponent<GraphicRaycaster>();
 
+            useRuntimeInfoPanel = playHudView == null;
+            useRuntimeMainMenu = mainMenuView == null;
+            useRuntimeLevelList = levelListView == null;
+
             GameObject root = CreatePanel("Root Panel", canvas.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(280f, 0f), new Vector2(140f, 0f));
             infoPanel = root;
             infoPanelRect = root.GetComponent<RectTransform>();
@@ -420,9 +628,14 @@ namespace Sokoban
             layout.childControlHeight = true;
             layout.childForceExpandHeight = false;
 
-            titleText = CreateText("Title", root.transform, "Sokoban", 24, TextAnchor.MiddleLeft);
-            statusText = CreateText("Status", root.transform, string.Empty, 15, TextAnchor.UpperLeft);
-            statusText.GetComponent<LayoutElement>().preferredHeight = 96f;
+            if (playHudView == null)
+            {
+                playHudView = PlayHudView.CreateRuntime(root.transform);
+            }
+            else
+            {
+                playHudView.Show();
+            }
 
             if (mainMenuView == null)
             {
@@ -436,7 +649,39 @@ namespace Sokoban
                 popUpView.Hide();
             }
 
-            levelListScrollPanel = CreateScrollView("Level List Scroll", root.transform, out levelListContent);
+            if (commonMenuView == null)
+            {
+                commonMenuView = CommonMenuView.CreateRuntime(canvas.transform);
+            }
+
+            commonMenuView.Initialize(
+                ReturnToGame,
+                ReturnToTitlePage,
+                LoadPreviousLevelFromCommonMenu,
+                LoadNextLevelFromCommonMenu,
+                RestartLevelFromCommonMenu,
+                EnterEditorFromCommonMenu);
+            commonMenuView.Hide();
+
+            if (commonEditorMenuView == null)
+            {
+                commonEditorMenuView = CommonEditorMenuView.CreateRuntime(canvas.transform);
+            }
+
+            commonEditorMenuView.Initialize(
+                ReturnToEditor,
+                ReturnToTitlePageFromEditor,
+                TestLevelFromEditorMenu,
+                SaveLevelFromEditorMenu,
+                DeleteLevelFromEditorMenu);
+            commonEditorMenuView.Hide();
+
+            if (levelListView == null)
+            {
+                levelListView = LevelListView.CreateRuntime(root.transform);
+            }
+
+            levelListView.Initialize(ShowStartPage);
 
             playPanel = CreateStack("Play Panel", root.transform);
             CreateButton("上一关", playPanel.transform, () => LoadLevel(currentLevelIndex - 1));
@@ -462,9 +707,10 @@ namespace Sokoban
             CreateButton("试玩当前关卡", editorPanel.transform, TestEditorLevel);
             CreateButton("保存关卡", editorPanel.transform, SaveEditorLevel);
             CreateButton("退出编辑器", editorPanel.transform, RequestExitEditor);
-            levelListScrollPanel.SetActive(false);
-            playPanel.SetActive(false);
+            levelListView.Hide();
+            SetPlayPanelVisible(false);
             editorScrollPanel.SetActive(false);
+            SetRuntimePanelVisible(useRuntimeInfoPanel || useRuntimeMainMenu || useRuntimeLevelList);
         }
 
         private void CreateToolButton(string label, EditorTool tool)
@@ -587,19 +833,6 @@ namespace Sokoban
             LayoutElement layout = buttonObject.AddComponent<LayoutElement>();
             layout.preferredHeight = 34f;
             return button;
-        }
-
-        private static void ClearChildren(Transform parent)
-        {
-            if (parent == null)
-            {
-                return;
-            }
-
-            for (int i = parent.childCount - 1; i >= 0; i--)
-            {
-                Destroy(parent.GetChild(i).gameObject);
-            }
         }
 
         private static InputField CreateInputField(string name, Transform parent, string value, string placeholder)

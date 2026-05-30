@@ -7,8 +7,11 @@ namespace Sokoban
 {
     public class PopUpView : MonoBehaviour
     {
+        [SerializeField] private GameObject container;
         [SerializeField] private GameObject root;
         [SerializeField] private TMP_Text messageText;
+        [SerializeField] private TMP_Text confirmButtonText;
+        [SerializeField] private TMP_Text cancelButtonText;
         [SerializeField] private Button confirmButton;
         [SerializeField] private Button cancelButton;
 
@@ -58,10 +61,15 @@ namespace Sokoban
 
             Button confirm = CreateButton("确认", buttonRow.transform);
             Button cancel = CreateButton("取消", buttonRow.transform);
+            TMP_Text confirmText = confirm.GetComponentInChildren<TMP_Text>();
+            TMP_Text cancelText = cancel.GetComponentInChildren<TMP_Text>();
 
             PopUpView view = overlay.AddComponent<PopUpView>();
+            view.container = overlay;
             view.root = overlay;
             view.messageText = message;
+            view.confirmButtonText = confirmText;
+            view.cancelButtonText = cancelText;
             view.confirmButton = confirm;
             view.cancelButton = cancel;
             view.Hide();
@@ -70,10 +78,18 @@ namespace Sokoban
 
         public void Show(string message, Action onConfirm)
         {
+            Show(message, "确认", "取消", onConfirm);
+        }
+
+        public void Show(string message, string confirmText, string cancelText, Action onConfirm, Action onCancel = null)
+        {
             if (messageText != null)
             {
                 messageText.text = string.IsNullOrWhiteSpace(message) ? "你是否确认执行该操作？" : message;
             }
+
+            SetButtonText(confirmButtonText, confirmText);
+            SetButtonText(cancelButtonText, cancelText);
 
             BindButton(confirmButton, () =>
             {
@@ -81,8 +97,17 @@ namespace Sokoban
                 onConfirm?.Invoke();
             });
 
-            BindButton(cancelButton, Hide);
-            GetRoot().SetActive(true);
+            BindButton(cancelButton, () =>
+            {
+                Hide();
+                onCancel?.Invoke();
+            });
+            GameObject containerObject = GetContainer();
+            GameObject rootObject = GetRoot();
+            containerObject.SetActive(true);
+            SetParentsActive(rootObject.transform);
+            rootObject.SetActive(true);
+            containerObject.transform.SetAsLastSibling();
         }
 
         public void Hide()
@@ -93,6 +118,25 @@ namespace Sokoban
         private GameObject GetRoot()
         {
             return root != null ? root : gameObject;
+        }
+
+        private GameObject GetContainer()
+        {
+            return container != null ? container : GetRoot();
+        }
+
+        private static void SetParentsActive(Transform child)
+        {
+            Transform parent = child.parent;
+            while (parent != null)
+            {
+                if (!parent.gameObject.activeSelf)
+                {
+                    parent.gameObject.SetActive(true);
+                }
+
+                parent = parent.parent;
+            }
         }
 
         private static void BindButton(Button button, Action action)
@@ -106,6 +150,14 @@ namespace Sokoban
             if (action != null)
             {
                 button.onClick.AddListener(() => action());
+            }
+        }
+
+        private static void SetButtonText(TMP_Text text, string value)
+        {
+            if (text != null)
+            {
+                text.text = string.IsNullOrWhiteSpace(value) ? string.Empty : value;
             }
         }
 

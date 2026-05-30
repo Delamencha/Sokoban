@@ -1,6 +1,9 @@
 {
     "highestCompletedLevelIndex": -1,
     "completedLevelKeys": [
-        "id:level_01"
+        "id:level_01",
+        "id:level_02",
+        "id:level_03",
+        "id:level_01___first_push_copy"
     ]
 }
