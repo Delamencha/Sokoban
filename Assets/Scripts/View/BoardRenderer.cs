@@ -5,7 +5,7 @@ namespace Sokoban
 {
     public class BoardRenderer : MonoBehaviour
     {
-        private static readonly Color EmptyColor = new Color(0.08f, 0.09f, 0.12f);
+        private static readonly Color EditorEmptyColor = new Color(0.72f, 0.67f, 0.56f, 0.10f);
         private static readonly Color FloorColor = new Color(0.72f, 0.67f, 0.56f);
         private static readonly Color WallColor = new Color(0.25f, 0.28f, 0.35f);
         private static readonly Color TargetColor = new Color(0.28f, 0.70f, 0.42f);
@@ -28,7 +28,7 @@ namespace Sokoban
                 {
                     Vector2Int position = new Vector2Int(x, y);
                     LevelTile tile = model.GetTile(position);
-                    DrawTile(position, tile, model.HasTarget(position));
+                    DrawTile(position, tile, model.HasTarget(position), false);
 
                     if (model.HasBox(position))
                     {
@@ -68,7 +68,7 @@ namespace Sokoban
                 for (int x = 0; x < level.width; x++)
                 {
                     Vector2Int position = new Vector2Int(x, y);
-                    DrawTile(position, level.GetTile(position), targetSet.Contains(position));
+                    DrawTile(position, level.GetTile(position), targetSet.Contains(position), true);
 
                     if (boxSet.Contains(position))
                     {
@@ -100,11 +100,15 @@ namespace Sokoban
             return new Vector3(position.x, position.y, 0f);
         }
 
-        private void DrawTile(Vector2Int position, LevelTile tile, bool hasTarget)
+        private void DrawTile(Vector2Int position, LevelTile tile, bool hasTarget, bool showEditorEmptyTile)
         {
             if (tile == LevelTile.Empty)
             {
-                DrawCell(position, EmptyColor, 0.96f, 0, "Empty");
+                if (showEditorEmptyTile)
+                {
+                    DrawCell(position, EditorEmptyColor, 0.96f, 0, "Editor Empty");
+                }
+
                 return;
             }
 
@@ -170,7 +174,8 @@ namespace Sokoban
 
             camera.orthographic = true;
             camera.transform.position = new Vector3((width - 1) * 0.5f, (height - 1) * 0.5f, -10f);
-            camera.orthographicSize = Mathf.Max(height * 0.65f, width * 0.35f, 4f);
+            int longestSide = Mathf.Max(width, height);
+            camera.orthographicSize = Mathf.Max(longestSide * 0.65f, 4f);
         }
     }
 }

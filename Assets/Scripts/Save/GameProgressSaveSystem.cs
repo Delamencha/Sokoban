@@ -47,16 +47,15 @@ namespace Sokoban
             }
 
             ProgressData data = LoadProgressData();
-            int lastCompletedIndex = -1;
-            for (int i = 0; i < levels.Count; i++)
+            for (int i = levels.Count - 1; i >= 0; i--)
             {
                 if (IsLevelCompleted(levels[i], data))
                 {
-                    lastCompletedIndex = i;
+                    return Mathf.Clamp(i + 1, 0, levels.Count - 1);
                 }
             }
 
-            return Mathf.Clamp(lastCompletedIndex + 1, 0, levels.Count - 1);
+            return 0;
         }
 
         public static void MarkLevelCompleted(LevelData level)

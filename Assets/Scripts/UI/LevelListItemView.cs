@@ -11,35 +11,12 @@ namespace Sokoban
         [SerializeField] private TMP_Text indexText;
         [SerializeField] private TMP_Text levelNameText;
         [SerializeField] private TMP_Text completionStateText;
+        [SerializeField] private TMP_Text mainFlowStateText;
 
-        public static LevelListItemView CreateRuntime(Transform parent)
-        {
-            GameObject itemObject = new GameObject("Level List Item");
-            itemObject.transform.SetParent(parent, false);
-            Image image = itemObject.AddComponent<Image>();
-            image.color = new Color(0.18f, 0.22f, 0.30f, 0.92f);
-
-            HorizontalLayoutGroup layout = itemObject.AddComponent<HorizontalLayoutGroup>();
-            layout.padding = new RectOffset(8, 8, 0, 0);
-            layout.spacing = 6f;
-            layout.childControlWidth = true;
-            layout.childForceExpandWidth = false;
-            layout.childAlignment = TextAnchor.MiddleLeft;
-
-            LayoutElement itemLayout = itemObject.AddComponent<LayoutElement>();
-            itemLayout.preferredHeight = 36f;
-
-            LevelListItemView view = itemObject.AddComponent<LevelListItemView>();
-            view.button = itemObject.AddComponent<Button>();
-            view.indexText = CreateText("Index", itemObject.transform, 14, TextAlignmentOptions.Left, 34f);
-            view.levelNameText = CreateText("Level Name", itemObject.transform, 14, TextAlignmentOptions.Left, 150f);
-            view.completionStateText = CreateText("Completion State", itemObject.transform, 14, TextAlignmentOptions.Right, 64f);
-            return view;
-        }
-
-        public void SetData(int index, string levelName, bool isCompleted, Action onClick)
+        public void SetData(int index, string levelName, bool isCompleted, bool isInMainFlow, Action onClick)
         {
             string completionState = isCompleted ? "已完成" : "未完成";
+            string mainFlowState = isInMainFlow ? "主流程" : "非主流程";
 
             if (indexText != null)
             {
@@ -57,7 +34,16 @@ namespace Sokoban
             }
             else if (levelNameText != null)
             {
-                levelNameText.text = (index + 1) + ". " + (levelName ?? string.Empty) + " - " + completionState;
+                levelNameText.text = (index + 1) + ". " + (levelName ?? string.Empty) + " - " + completionState + " - " + mainFlowState;
+            }
+
+            if (mainFlowStateText != null)
+            {
+                mainFlowStateText.text = mainFlowState;
+            }
+            else if (completionStateText != null)
+            {
+                completionStateText.text = completionState + " / " + mainFlowState;
             }
 
             BindButton(onClick);
@@ -77,21 +63,5 @@ namespace Sokoban
             }
         }
 
-        private static TMP_Text CreateText(string name, Transform parent, int size, TextAlignmentOptions alignment, float preferredWidth)
-        {
-            GameObject textObject = new GameObject(name);
-            textObject.transform.SetParent(parent, false);
-            TMP_Text text = textObject.AddComponent<TextMeshProUGUI>();
-            text.fontSize = size;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.enableWordWrapping = false;
-            text.overflowMode = TextOverflowModes.Ellipsis;
-
-            LayoutElement layout = textObject.AddComponent<LayoutElement>();
-            layout.preferredWidth = preferredWidth;
-            layout.flexibleWidth = preferredWidth > 100f ? 1f : 0f;
-            return text;
-        }
     }
 }

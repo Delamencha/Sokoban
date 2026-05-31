@@ -17,8 +17,14 @@ namespace Sokoban
 
     public class RuntimeLevelEditor
     {
+        private const int MaxUndoHistory = 20;
+
         private readonly BoardRenderer renderer;
         private readonly Action<string> setStatus;
+        private readonly List<LevelData> undoHistory = new List<LevelData>();
+        private LevelData editOperationSnapshot;
+        private string editOperationSnapshotJson;
+        private bool editOperationActive;
 
         public RuntimeLevelEditor(BoardRenderer renderer, Action<string> setStatus)
         {
@@ -34,11 +40,13 @@ namespace Sokoban
         {
             CurrentLevel = level.Clone();
             CurrentLevel.EnsureTiles();
+            ClearUndoHistory();
             Render();
         }
 
         public void CreateBlank(int width, int height)
         {
+            PushUndoHistory(CurrentLevel.Clone());
             CurrentLevel = LevelData.CreateBlank(width, height);
             ActiveTool = EditorTool.Floor;
             Render();
@@ -71,6 +79,84 @@ namespace Sokoban
                 return false;
             }
 
+            LevelData beforeChange = CurrentLevel.Clone();
+            string beforeJson = JsonUtility.ToJson(beforeChange);
+            bool applied = ApplyPaint(position);
+            if (!applied)
+            {
+                return false;
+            }
+
+            if (beforeJson == JsonUtility.ToJson(CurrentLevel))
+            {
+                return false;
+            }
+
+            if (!editOperationActive)
+            {
+                PushUndoHistory(beforeChange);
+            }
+
+            Render();
+            return true;
+        }
+
+        public void BeginEditOperation()
+        {
+            if (editOperationActive)
+            {
+                return;
+            }
+
+            editOperationSnapshot = CurrentLevel.Clone();
+            editOperationSnapshotJson = JsonUtility.ToJson(editOperationSnapshot);
+            editOperationActive = true;
+        }
+
+        public void EndEditOperation()
+        {
+            if (!editOperationActive)
+            {
+                return;
+            }
+
+            if (editOperationSnapshotJson != JsonUtility.ToJson(CurrentLevel))
+            {
+                PushUndoHistory(editOperationSnapshot);
+            }
+
+            editOperationSnapshot = null;
+            editOperationSnapshotJson = string.Empty;
+            editOperationActive = false;
+        }
+
+        public bool Undo()
+        {
+            if (undoHistory.Count == 0)
+            {
+                setStatus("没有可撤销的编辑操作。");
+                return false;
+            }
+
+            int lastIndex = undoHistory.Count - 1;
+            CurrentLevel = undoHistory[lastIndex].Clone();
+            CurrentLevel.EnsureTiles();
+            undoHistory.RemoveAt(lastIndex);
+            Render();
+            setStatus("已撤销一步编辑操作。");
+            return true;
+        }
+
+        public void ClearUndoHistory()
+        {
+            undoHistory.Clear();
+            editOperationSnapshot = null;
+            editOperationSnapshotJson = string.Empty;
+            editOperationActive = false;
+        }
+
+        private bool ApplyPaint(Vector2Int position)
+        {
             switch (ActiveTool)
             {
                 case EditorTool.Wall:
@@ -107,7 +193,6 @@ namespace Sokoban
                     break;
             }
 
-            Render();
             return true;
         }
 
@@ -118,7 +203,12 @@ namespace Sokoban
 
         public string Save()
         {
-            string path = LevelSaveSystem.SaveUserLevel(CurrentLevel);
+            return Save(string.Empty);
+        }
+
+        public string Save(string existingPath)
+        {
+            string path = LevelSaveSystem.SaveLevel(CurrentLevel, existingPath);
             setStatus("关卡已保存：" + path);
             return path;
         }
@@ -126,6 +216,20 @@ namespace Sokoban
         public void Render()
         {
             renderer.RenderLevel(CurrentLevel);
+        }
+
+        private void PushUndoHistory(LevelData snapshot)
+        {
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            undoHistory.Add(snapshot);
+            if (undoHistory.Count > MaxUndoHistory)
+            {
+                undoHistory.RemoveAt(0);
+            }
         }
 
         private void EnsureFloor(Vector2Int position)

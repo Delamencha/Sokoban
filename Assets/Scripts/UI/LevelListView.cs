@@ -6,6 +6,13 @@ using UnityEngine.UI;
 
 namespace Sokoban
 {
+    public enum LevelListFilter
+    {
+        MainFlow,
+        NotInMainFlow,
+        All
+    }
+
     public class LevelListView : MonoBehaviour
     {
         [SerializeField] private GameObject container;
@@ -13,25 +20,33 @@ namespace Sokoban
         [SerializeField] private Transform contentRoot;
         [SerializeField] private LevelListItemView itemPrefab;
         [SerializeField] private TMP_Text emptyText;
+        [SerializeField] private TMP_Dropdown filterDropdown;
         [SerializeField] private Button backButton;
 
-        public static LevelListView CreateRuntime(Transform parent)
+        private Action<LevelListFilter> onFilterChanged;
+
+        public void Initialize(Action onBack, Action<LevelListFilter> onFilterChanged)
         {
-            GameObject scrollObject = CreateScrollView("Level List Panel", parent, out Transform content);
-            LevelListView view = scrollObject.AddComponent<LevelListView>();
-            view.container = scrollObject;
-            view.root = scrollObject;
-            view.contentRoot = content;
-            view.emptyText = CreateText("Empty Text", content, "当前没有可用关卡", 16, TextAlignmentOptions.Left);
-            view.backButton = CreateButton("返回开始页面", content);
-            view.Hide();
-            return view;
+            this.onFilterChanged = onFilterChanged;
+            BindButton(backButton, onBack);
+            ConfigureFilterDropdown();
+            HideEmptyText();
         }
 
-        public void Initialize(Action onBack)
+        public void SetFilter(LevelListFilter filter)
         {
-            BindButton(backButton, onBack);
-            HideEmptyText();
+            if (filterDropdown != null)
+            {
+                filterDropdown.SetValueWithoutNotify((int)filter);
+            }
+        }
+
+        public void SetFilterVisible(bool visible)
+        {
+            if (filterDropdown != null)
+            {
+                filterDropdown.gameObject.SetActive(visible);
+            }
         }
 
         public void Show()
@@ -50,13 +65,14 @@ namespace Sokoban
         }
 
         public void Rebuild(
-            IReadOnlyList<LevelData> levels,
+            IReadOnlyList<LevelFileEntry> entries,
             Func<LevelData, bool> isCompleted,
+            Func<LevelData, bool> isInMainFlow,
             Action<int> onSelectLevel)
         {
             ClearLevelItems();
 
-            bool hasLevels = levels != null && levels.Count > 0;
+            bool hasLevels = entries != null && entries.Count > 0;
             if (emptyText != null)
             {
                 emptyText.gameObject.SetActive(!hasLevels);
@@ -67,14 +83,21 @@ namespace Sokoban
                 return;
             }
 
-            for (int i = 0; i < levels.Count; i++)
+            for (int i = 0; i < entries.Count; i++)
             {
                 int levelIndex = i;
+                LevelData level = entries[i] != null ? entries[i].level : null;
                 LevelListItemView itemView = CreateItem();
+                if (itemView == null)
+                {
+                    return;
+                }
+
                 itemView.SetData(
                     levelIndex,
-                    levels[i].displayName,
-                    isCompleted != null && isCompleted(levels[i]),
+                    level != null ? level.displayName : string.Empty,
+                    level != null && isCompleted != null && isCompleted(level),
+                    level != null && isInMainFlow != null && isInMainFlow(level),
                     () => onSelectLevel?.Invoke(levelIndex));
             }
         }
@@ -88,7 +111,8 @@ namespace Sokoban
                 return item;
             }
 
-            return LevelListItemView.CreateRuntime(contentRoot);
+            Debug.LogError("LevelListView requires an item prefab.");
+            return null;
         }
 
         private void ClearLevelItems()
@@ -107,6 +131,11 @@ namespace Sokoban
                 }
 
                 if (backButton != null && child == backButton.transform)
+                {
+                    continue;
+                }
+
+                if (filterDropdown != null && child == filterDropdown.transform)
                 {
                     continue;
                 }
@@ -161,94 +190,28 @@ namespace Sokoban
             }
         }
 
-        private static GameObject CreateScrollView(string name, Transform parent, out Transform content)
+        private void ConfigureFilterDropdown()
         {
-            GameObject scrollObject = new GameObject(name);
-            scrollObject.transform.SetParent(parent, false);
-            Image background = scrollObject.AddComponent<Image>();
-            background.color = new Color(0f, 0f, 0f, 0.12f);
+            if (filterDropdown == null)
+            {
+                return;
+            }
 
-            LayoutElement layoutElement = scrollObject.AddComponent<LayoutElement>();
-            layoutElement.preferredHeight = 410f;
-            layoutElement.flexibleHeight = 1f;
-
-            GameObject viewport = new GameObject("Viewport");
-            viewport.transform.SetParent(scrollObject.transform, false);
-            Image viewportImage = viewport.AddComponent<Image>();
-            viewportImage.color = new Color(1f, 1f, 1f, 0.02f);
-            Mask mask = viewport.AddComponent<Mask>();
-            mask.showMaskGraphic = false;
-
-            GameObject contentObject = new GameObject("Content", typeof(RectTransform));
-            contentObject.transform.SetParent(viewport.transform, false);
-            content = contentObject.transform;
-            VerticalLayoutGroup contentLayout = contentObject.AddComponent<VerticalLayoutGroup>();
-            contentLayout.spacing = 6f;
-            contentLayout.childControlHeight = false;
-            contentLayout.childForceExpandHeight = false;
-            ContentSizeFitter contentFitter = contentObject.AddComponent<ContentSizeFitter>();
-            contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            RectTransform scrollRectTransform = scrollObject.GetComponent<RectTransform>();
-            RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-            RectTransform contentRect = contentObject.GetComponent<RectTransform>();
-
-            ConfigureFillRect(viewportRect, 0f, 0f);
-            contentRect.anchorMin = new Vector2(0f, 1f);
-            contentRect.anchorMax = new Vector2(1f, 1f);
-            contentRect.pivot = new Vector2(0.5f, 1f);
-            contentRect.anchoredPosition = Vector2.zero;
-            contentRect.sizeDelta = Vector2.zero;
-
-            ScrollRect scrollRect = scrollObject.AddComponent<ScrollRect>();
-            scrollRect.viewport = viewportRect;
-            scrollRect.content = contentRect;
-            scrollRect.horizontal = false;
-            scrollRect.vertical = true;
-            scrollRect.movementType = ScrollRect.MovementType.Clamped;
-            scrollRect.scrollSensitivity = 24f;
-
-            scrollRectTransform.sizeDelta = Vector2.zero;
-            return scrollObject;
+            filterDropdown.onValueChanged.RemoveAllListeners();
+            filterDropdown.options.Clear();
+            filterDropdown.options.Add(new TMP_Dropdown.OptionData("主流程关卡"));
+            filterDropdown.options.Add(new TMP_Dropdown.OptionData("未加入主流程"));
+            filterDropdown.options.Add(new TMP_Dropdown.OptionData("全部关卡"));
+            filterDropdown.SetValueWithoutNotify((int)LevelListFilter.MainFlow);
+            filterDropdown.onValueChanged.AddListener(value =>
+            {
+                LevelListFilter filter = value >= 0 && value <= (int)LevelListFilter.All
+                    ? (LevelListFilter)value
+                    : LevelListFilter.MainFlow;
+                onFilterChanged?.Invoke(filter);
+            });
+            filterDropdown.RefreshShownValue();
         }
 
-        private static Button CreateButton(string label, Transform parent)
-        {
-            GameObject buttonObject = new GameObject(label + " Button");
-            buttonObject.transform.SetParent(parent, false);
-            Image image = buttonObject.AddComponent<Image>();
-            image.color = new Color(0.18f, 0.22f, 0.30f, 0.92f);
-
-            Button button = buttonObject.AddComponent<Button>();
-            TMP_Text text = CreateText("Text", buttonObject.transform, label, 16, TextAlignmentOptions.Center);
-            ConfigureFillRect(text.GetComponent<RectTransform>(), 0f, 0f);
-
-            LayoutElement layout = buttonObject.AddComponent<LayoutElement>();
-            layout.preferredHeight = 34f;
-            return button;
-        }
-
-        private static TMP_Text CreateText(string name, Transform parent, string value, int size, TextAlignmentOptions alignment)
-        {
-            GameObject textObject = new GameObject(name);
-            textObject.transform.SetParent(parent, false);
-            TMP_Text text = textObject.AddComponent<TextMeshProUGUI>();
-            text.text = value;
-            text.fontSize = size;
-            text.alignment = alignment;
-            text.color = Color.white;
-
-            LayoutElement layout = textObject.AddComponent<LayoutElement>();
-            layout.preferredHeight = Mathf.Max(32f, size + 12f);
-            return text;
-        }
-
-        private static void ConfigureFillRect(RectTransform rect, float horizontalPadding, float verticalPadding)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(horizontalPadding, verticalPadding);
-            rect.offsetMax = new Vector2(-horizontalPadding, -verticalPadding);
-        }
     }
 }
