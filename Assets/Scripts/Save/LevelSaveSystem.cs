@@ -39,6 +39,7 @@ namespace Sokoban
         private const string LevelDirectoryName = "Level";
         private const string ConfigDirectoryName = "Config";
         private const string IoConfigFileName = "level_io_config.json";
+        private const string MainFlowConfigFileName = "main_flow.json";
         private const string SeedInitializationMarkerFileName = "level_seed_initialized.json";
         private const string ImportedDirectoryName = "Imported";
         private const string FailedDirectoryName = "Failed";
@@ -345,6 +346,11 @@ namespace Sokoban
             }
 
             WriteSeedInitializationMarker(copiedCount, "Copied built-in seed levels from StreamingAssets.");
+            if (copiedCount > 0)
+            {
+                TryCopySeedMainFlowConfig();
+            }
+
             Debug.Log("Initialized built-in seed levels: " + copiedCount + " file(s) copied.");
         }
 
@@ -353,9 +359,52 @@ namespace Sokoban
             return Path.Combine(Application.streamingAssetsPath, LevelDirectoryName);
         }
 
+        private static string GetSeedConfigDirectory()
+        {
+            return Path.Combine(Application.streamingAssetsPath, ConfigDirectoryName);
+        }
+
+        private static string GetSeedMainFlowConfigPath()
+        {
+            return Path.Combine(GetSeedConfigDirectory(), MainFlowConfigFileName);
+        }
+
+        private static string GetMainFlowConfigPath()
+        {
+            return Path.Combine(GetProjectRoot(), ConfigDirectoryName, MainFlowConfigFileName);
+        }
+
         private static string GetSeedInitializationMarkerPath()
         {
             return Path.Combine(GetProjectRoot(), ConfigDirectoryName, SeedInitializationMarkerFileName);
+        }
+
+        private static void TryCopySeedMainFlowConfig()
+        {
+            try
+            {
+                string seedConfigPath = GetSeedMainFlowConfigPath();
+                if (!File.Exists(seedConfigPath))
+                {
+                    Debug.Log("No built-in main flow config found: " + seedConfigPath);
+                    return;
+                }
+
+                string targetConfigPath = GetMainFlowConfigPath();
+                if (File.Exists(targetConfigPath))
+                {
+                    Debug.Log("External main flow config already exists: " + targetConfigPath);
+                    return;
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(targetConfigPath));
+                File.Copy(seedConfigPath, targetConfigPath);
+                Debug.Log("Initialized built-in main flow config: " + targetConfigPath);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("Failed to initialize built-in main flow config: " + exception.Message);
+            }
         }
 
         private static void WriteSeedInitializationMarker(int copiedCount, string message)

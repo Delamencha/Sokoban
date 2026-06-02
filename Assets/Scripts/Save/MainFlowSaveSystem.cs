@@ -27,6 +27,11 @@ namespace Sokoban
 
             MainFlowData data = LoadOrCreateData(entries);
             List<string> validIds = FilterValidLevelIds(data.levelIdsInOrder, entries);
+            if (validIds.Count == 0 && entries.Count > 0)
+            {
+                validIds = CreateDefaultMainFlowIds(entries);
+            }
+
             if (!AreSameIds(data.levelIdsInOrder, validIds))
             {
                 data.levelIdsInOrder = validIds;
@@ -55,6 +60,11 @@ namespace Sokoban
 
             MainFlowData data = LoadData();
             List<string> validIds = FilterValidLevelIds(data.levelIdsInOrder, NormalizeEntries(allEntries));
+            if (validIds.Count == 0)
+            {
+                validIds = CreateDefaultMainFlowIds(allEntries);
+            }
+
             if (AreSameIds(data.levelIdsInOrder, validIds))
             {
                 return;
@@ -97,10 +107,7 @@ namespace Sokoban
 
             MainFlowData data = new MainFlowData
             {
-                levelIdsInOrder = LevelSaveSystem.SortEntriesByCreatedAtThenDisplayName(allEntries)
-                    .Where(entry => entry != null && entry.level != null && !string.IsNullOrWhiteSpace(entry.level.id))
-                    .Select(entry => entry.level.id)
-                    .ToList()
+                levelIdsInOrder = CreateDefaultMainFlowIds(allEntries)
             };
 
             SaveData(data);
@@ -174,6 +181,14 @@ namespace Sokoban
                     .Select(entry => entry.level.id));
 
             return NormalizeIds(ids).Where(validIds.Contains).ToList();
+        }
+
+        private static List<string> CreateDefaultMainFlowIds(IReadOnlyList<LevelFileEntry> allEntries)
+        {
+            return LevelSaveSystem.SortEntriesByCreatedAtThenDisplayName(NormalizeEntries(allEntries))
+                .Where(entry => entry != null && entry.level != null && !string.IsNullOrWhiteSpace(entry.level.id))
+                .Select(entry => entry.level.id)
+                .ToList();
         }
 
         private static List<LevelFileEntry> GetEntriesByIds(IReadOnlyList<string> ids, IReadOnlyList<LevelFileEntry> allEntries)
