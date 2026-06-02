@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,6 +9,7 @@ namespace Sokoban
     {
         [SerializeField] private GameObject root;
         [SerializeField] private Button continueButton;
+        [SerializeField] private TMP_Text continueButtonText;
         [SerializeField] private Button levelListButton;
         [SerializeField] private Button clearProgressButton;
         [SerializeField] private Button editorButton;
@@ -38,6 +40,14 @@ namespace Sokoban
         public void Hide()
         {
             GetRoot().SetActive(false);
+        }
+
+        public void SetContinueButtonText(string text)
+        {
+            if (continueButtonText != null)
+            {
+                continueButtonText.text = string.IsNullOrWhiteSpace(text) ? "开始游戏" : text;
+            }
         }
 
         private GameObject GetRoot()

@@ -1,0 +1,66 @@
+{
+    "id": "level_eaafc3ef1d0146aaa76a2b497fe2c7e1",
+    "displayName": "Level W4",
+    "createdAt": "2026-06-02T17:58:48.9352918+08:00",
+    "width": 7,
+    "height": 7,
+    "validationStatus": "有解",
+    "solutionActions": "RRUULULLDLDURDUURRDDRDLUUULLDDRLUURRDDUUURDDD",
+    "tiles": [
+        "#######",
+        "#.....#",
+        "#.....#",
+        "#..#..#",
+        "#.....#",
+        "#.....#",
+        "#######"
+    ],
+    "player": {
+        "x": 3,
+        "y": 1
+    },
+    "boxes": [
+        {
+            "x": 1,
+            "y": 2
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 2
+        },
+        {
+            "x": 4,
+            "y": 2
+        },
+        {
+            "x": 5,
+            "y": 2
+        }
+    ],
+    "targets": [
+        {
+            "x": 1,
+            "y": 1
+        },
+        {
+            "x": 2,
+            "y": 1
+        },
+        {
+            "x": 3,
+            "y": 1
+        },
+        {
+            "x": 4,
+            "y": 1
+        },
+        {
+            "x": 5,
+            "y": 1
+        }
+    ]
+}

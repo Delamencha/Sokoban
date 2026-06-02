@@ -10,6 +10,7 @@ namespace Sokoban
         [SerializeField] private Button button;
         [SerializeField] private TMP_Text indexText;
         [SerializeField] private TMP_Text levelNameText;
+        [SerializeField] private TMP_Text validationStatusText;
         [SerializeField] private GameObject selectedIndicator;
         [SerializeField] private Image backgroundImage;
         [SerializeField] private Color normalColor = Color.white;
@@ -25,6 +26,11 @@ namespace Sokoban
             if (levelNameText != null)
             {
                 levelNameText.text = entry != null && entry.level != null ? entry.level.displayName : string.Empty;
+            }
+
+            if (validationStatusText != null)
+            {
+                validationStatusText.text = LevelValidator.GetValidationStatusText(entry != null ? entry.level : null);
             }
 
             BindButton(onClick);

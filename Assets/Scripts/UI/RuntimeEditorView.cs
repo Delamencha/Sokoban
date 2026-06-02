@@ -16,6 +16,7 @@ namespace Sokoban
         [SerializeField] private Button floorToolButton;
         [SerializeField] private Button wallToolButton;
         [SerializeField] private Button emptyToolButton;
+        [SerializeField] private Button cancelToolSelectionButton;
         [SerializeField] private Button playerToolButton;
         [SerializeField] private Button boxToolButton;
         [SerializeField] private Button targetToolButton;
@@ -23,7 +24,17 @@ namespace Sokoban
         [SerializeField] private Button undoButton;
         [SerializeField] private Button testButton;
         [SerializeField] private Button saveButton;
+        [SerializeField] private Button validateButton;
+        [SerializeField] private Button solveButton;
+        [SerializeField] private Button strictSolveButton;
+        [SerializeField] private Button showSolutionButton;
         [SerializeField] private Button exitButton;
+        [SerializeField] private Button normalBrushButton;
+        [SerializeField] private Button filledRectangleBrushButton;
+        [SerializeField] private Button hollowRectangleBrushButton;
+        [SerializeField] private GameObject solverBlockingOverlay;
+        [SerializeField, Min(0.01f)] private float solverMaxDurationSeconds = 5f;
+        [SerializeField, Min(1)] private int solverMaxExploredStates = 100000;
 
         private const string DefaultLevelName = "Custom Level";
         private const int MinDimension = 1;
@@ -32,34 +43,50 @@ namespace Sokoban
 
         private readonly Button[] toolButtons = new Button[7];
         private readonly Color[] toolButtonDefaultColors = new Color[7];
+        private readonly Button[] brushButtons = new Button[3];
+        private readonly Color[] brushButtonDefaultColors = new Color[3];
+        private Color cancelToolSelectionButtonDefaultColor = Color.white;
         private bool isFilteringDimensionInput;
         private bool hasToolButtonDefaultColors;
-        private EditorTool selectedTool = EditorTool.Floor;
+        private bool hasBrushButtonDefaultColors;
+        private EditorTool selectedTool = EditorTool.None;
+        private EditorBrushMode selectedBrushMode = EditorBrushMode.Normal;
         private Action<EditorTool> onSelectTool;
+        private Action<EditorBrushMode> onSelectBrushMode;
 
         private void Awake()
         {
             NameInputFilter.Configure(nameInput);
             ConfigureDimensionInput(widthInput);
             ConfigureDimensionInput(heightInput);
+            SetSolverBlockingOverlayVisible(false);
             Hide();
         }
 
         public void Initialize(
             Action onCreateBlank,
             Action<EditorTool> onSelectTool,
+            Action<EditorBrushMode> onSelectBrushMode,
             Action onUndo,
             Action onTest,
             Action onSave,
+            Action onValidate,
+            Action onSolve,
+            Action onStrictSolve,
+            Action onShowSolution,
             Action onExit)
         {
             this.onSelectTool = onSelectTool;
+            this.onSelectBrushMode = onSelectBrushMode;
             CacheToolButtons();
             CacheToolButtonDefaultColors();
+            CacheBrushButtons();
+            CacheBrushButtonDefaultColors();
             BindButton(createBlankButton, onCreateBlank);
             BindButton(floorToolButton, () => SelectTool(EditorTool.Floor));
             BindButton(wallToolButton, () => SelectTool(EditorTool.Wall));
             BindButton(emptyToolButton, () => SelectTool(EditorTool.Empty));
+            BindButton(cancelToolSelectionButton, ClearToolSelection);
             BindButton(playerToolButton, () => SelectTool(EditorTool.Player));
             BindButton(boxToolButton, () => SelectTool(EditorTool.Box));
             BindButton(targetToolButton, () => SelectTool(EditorTool.Target));
@@ -67,8 +94,16 @@ namespace Sokoban
             BindButton(undoButton, onUndo);
             BindButton(testButton, onTest);
             BindButton(saveButton, onSave);
+            BindButton(validateButton, onValidate);
+            BindButton(solveButton, onSolve);
+            BindButton(strictSolveButton, onStrictSolve);
+            BindButton(showSolutionButton, onShowSolution);
             BindButton(exitButton, onExit);
+            BindButton(normalBrushButton, () => SelectBrushMode(EditorBrushMode.Normal));
+            BindButton(filledRectangleBrushButton, () => SelectBrushMode(EditorBrushMode.FilledRectangle));
+            BindButton(hollowRectangleBrushButton, () => SelectBrushMode(EditorBrushMode.HollowRectangle));
             RefreshToolSelection();
+            RefreshBrushSelection();
         }
 
         public void Show()
@@ -83,6 +118,7 @@ namespace Sokoban
 
         public void Hide()
         {
+            SetSolverBlockingOverlayVisible(false);
             GetRoot().SetActive(false);
         }
 
@@ -113,11 +149,48 @@ namespace Sokoban
             return ParseDimensionInput(heightInput, fallback);
         }
 
+        public float GetSolverMaxDurationSeconds()
+        {
+            return Mathf.Max(0.01f, solverMaxDurationSeconds);
+        }
+
+        public int GetSolverMaxExploredStates()
+        {
+            return Mathf.Max(1, solverMaxExploredStates);
+        }
+
+        public void SetSolverBlockingOverlayVisible(bool visible)
+        {
+            if (solverBlockingOverlay != null)
+            {
+                solverBlockingOverlay.SetActive(visible);
+            }
+        }
+
         public void SelectTool(EditorTool tool)
         {
             selectedTool = tool;
+            if (!IsTileTool(tool) && selectedBrushMode != EditorBrushMode.Normal)
+            {
+                selectedBrushMode = EditorBrushMode.Normal;
+                onSelectBrushMode?.Invoke(EditorBrushMode.Normal);
+                RefreshBrushSelection();
+            }
+
             onSelectTool?.Invoke(tool);
             RefreshToolSelection();
+        }
+
+        public void ClearToolSelection()
+        {
+            SelectTool(EditorTool.None);
+        }
+
+        public void SelectBrushMode(EditorBrushMode brushMode)
+        {
+            selectedBrushMode = IsTileTool(selectedTool) ? brushMode : EditorBrushMode.Normal;
+            onSelectBrushMode?.Invoke(selectedBrushMode);
+            RefreshBrushSelection();
         }
 
         private GameObject GetRoot()
@@ -141,6 +214,13 @@ namespace Sokoban
             toolButtons[(int)EditorTool.EraseEntity] = eraseEntityToolButton;
         }
 
+        private void CacheBrushButtons()
+        {
+            brushButtons[(int)EditorBrushMode.Normal] = normalBrushButton;
+            brushButtons[(int)EditorBrushMode.FilledRectangle] = filledRectangleBrushButton;
+            brushButtons[(int)EditorBrushMode.HollowRectangle] = hollowRectangleBrushButton;
+        }
+
         private void CacheToolButtonDefaultColors()
         {
             if (hasToolButtonDefaultColors)
@@ -154,7 +234,25 @@ namespace Sokoban
                 toolButtonDefaultColors[i] = image != null ? image.color : Color.white;
             }
 
+            Image cancelImage = GetButtonImage(cancelToolSelectionButton);
+            cancelToolSelectionButtonDefaultColor = cancelImage != null ? cancelImage.color : Color.white;
             hasToolButtonDefaultColors = true;
+        }
+
+        private void CacheBrushButtonDefaultColors()
+        {
+            if (hasBrushButtonDefaultColors)
+            {
+                return;
+            }
+
+            for (int i = 0; i < brushButtons.Length; i++)
+            {
+                Image image = GetButtonImage(brushButtons[i]);
+                brushButtonDefaultColors[i] = image != null ? image.color : Color.white;
+            }
+
+            hasBrushButtonDefaultColors = true;
         }
 
         private void RefreshToolSelection()
@@ -169,11 +267,36 @@ namespace Sokoban
                     image.color = i == (int)selectedTool ? SelectedToolColor : toolButtonDefaultColors[i];
                 }
             }
+
+            Image cancelImage = GetButtonImage(cancelToolSelectionButton);
+            if (cancelImage != null)
+            {
+                cancelImage.color = selectedTool == EditorTool.None ? SelectedToolColor : cancelToolSelectionButtonDefaultColor;
+            }
+        }
+
+        private void RefreshBrushSelection()
+        {
+            CacheBrushButtons();
+            CacheBrushButtonDefaultColors();
+            for (int i = 0; i < brushButtons.Length; i++)
+            {
+                Image image = GetButtonImage(brushButtons[i]);
+                if (image != null)
+                {
+                    image.color = i == (int)selectedBrushMode ? SelectedToolColor : brushButtonDefaultColors[i];
+                }
+            }
         }
 
         private static Image GetButtonImage(Button button)
         {
             return button != null ? button.targetGraphic as Image : null;
+        }
+
+        private static bool IsTileTool(EditorTool tool)
+        {
+            return tool == EditorTool.Floor || tool == EditorTool.Wall || tool == EditorTool.Empty;
         }
 
         private static int ParseDimensionInput(TMP_InputField input, int fallback)

@@ -20,6 +20,7 @@ namespace Sokoban
         [SerializeField] private Button moveUpButton;
         [SerializeField] private Button moveDownButton;
         [SerializeField] private Button saveButton;
+        [SerializeField] private Button validateButton;
         [SerializeField] private Button backButton;
 
         private readonly List<LevelFileEntry> mainFlowEntries = new List<LevelFileEntry>();
@@ -30,6 +31,7 @@ namespace Sokoban
         private Action<LevelFileEntry> onRemove;
         private Action<LevelFileEntry> onMoveUp;
         private Action<LevelFileEntry> onMoveDown;
+        private Action<LevelFileEntry> onValidate;
         private Action onSave;
         private Action onBack;
         private int selectedMainFlowIndex = -1;
@@ -40,6 +42,7 @@ namespace Sokoban
             Action<LevelFileEntry> onRemove,
             Action<LevelFileEntry> onMoveUp,
             Action<LevelFileEntry> onMoveDown,
+            Action<LevelFileEntry> onValidate,
             Action onSave,
             Action onBack)
         {
@@ -47,6 +50,7 @@ namespace Sokoban
             this.onRemove = onRemove;
             this.onMoveUp = onMoveUp;
             this.onMoveDown = onMoveDown;
+            this.onValidate = onValidate;
             this.onSave = onSave;
             this.onBack = onBack;
 
@@ -54,6 +58,7 @@ namespace Sokoban
             BindButton(removeButton, () => InvokeWithSelection(mainFlowEntries, selectedMainFlowIndex, this.onRemove));
             BindButton(moveUpButton, () => InvokeWithSelection(mainFlowEntries, selectedMainFlowIndex, this.onMoveUp));
             BindButton(moveDownButton, () => InvokeWithSelection(mainFlowEntries, selectedMainFlowIndex, this.onMoveDown));
+            BindButton(validateButton, () => this.onValidate?.Invoke(GetSelectedEntry()));
             BindButton(saveButton, () => this.onSave?.Invoke());
             BindButton(backButton, () => this.onBack?.Invoke());
             UpdateOperationButtons();
@@ -76,6 +81,15 @@ namespace Sokoban
 
         public void Rebuild(IReadOnlyList<LevelFileEntry> mainFlowEntries, IReadOnlyList<LevelFileEntry> availableEntries)
         {
+            Rebuild(mainFlowEntries, availableEntries, null, false);
+        }
+
+        public void Rebuild(
+            IReadOnlyList<LevelFileEntry> mainFlowEntries,
+            IReadOnlyList<LevelFileEntry> availableEntries,
+            string selectedLevelId,
+            bool selectInMainFlow)
+        {
             ClearItems(mainFlowContentRoot, mainFlowItemViews);
             ClearItems(availableContentRoot, availableItemViews);
             this.mainFlowEntries.Clear();
@@ -97,7 +111,51 @@ namespace Sokoban
             SetEmptyText(availableEmptyText, this.availableEntries.Count == 0);
             RebuildList(this.mainFlowEntries, mainFlowContentRoot, mainFlowItemViews, SelectMainFlowIndex);
             RebuildList(this.availableEntries, availableContentRoot, availableItemViews, SelectAvailableIndex);
+            RestoreSelection(selectedLevelId, selectInMainFlow);
             UpdateOperationButtons();
+        }
+
+        private void RestoreSelection(string selectedLevelId, bool selectInMainFlow)
+        {
+            if (string.IsNullOrWhiteSpace(selectedLevelId))
+            {
+                return;
+            }
+
+            int index = FindEntryIndex(selectInMainFlow ? mainFlowEntries : availableEntries, selectedLevelId);
+            if (index < 0)
+            {
+                return;
+            }
+
+            if (selectInMainFlow)
+            {
+                SelectMainFlowIndex(index);
+            }
+            else
+            {
+                SelectAvailableIndex(index);
+            }
+        }
+
+        private static int FindEntryIndex(IReadOnlyList<LevelFileEntry> entries, string levelId)
+        {
+            if (entries == null)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (entries[i] != null
+                    && entries[i].level != null
+                    && string.Equals(entries[i].level.id, levelId, StringComparison.Ordinal))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private void RebuildList(
@@ -152,8 +210,24 @@ namespace Sokoban
             SetButtonInteractable(removeButton, hasMainFlowSelection);
             SetButtonInteractable(moveUpButton, hasMainFlowSelection && selectedMainFlowIndex > 0);
             SetButtonInteractable(moveDownButton, hasMainFlowSelection && selectedMainFlowIndex < mainFlowEntries.Count - 1);
+            SetButtonInteractable(validateButton, hasAvailableSelection || hasMainFlowSelection);
             SetButtonInteractable(saveButton, true);
             SetButtonInteractable(backButton, true);
+        }
+
+        private LevelFileEntry GetSelectedEntry()
+        {
+            if (selectedAvailableIndex >= 0 && selectedAvailableIndex < availableEntries.Count)
+            {
+                return availableEntries[selectedAvailableIndex];
+            }
+
+            if (selectedMainFlowIndex >= 0 && selectedMainFlowIndex < mainFlowEntries.Count)
+            {
+                return mainFlowEntries[selectedMainFlowIndex];
+            }
+
+            return null;
         }
 
         private void InvokeWithSelection(

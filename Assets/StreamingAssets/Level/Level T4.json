@@ -1,0 +1,59 @@
+{
+    "id": "level_32d56dbd0ac84f40a5d63e79f7f7c137",
+    "displayName": "Level T4",
+    "createdAt": "2026-06-02T23:46:06.0224866+08:00",
+    "width": 5,
+    "height": 8,
+    "validationStatus": "有解",
+    "solutionActions": "RULRUUUULLDDDDURLUUURRDLRDDLLURDRUUDLLUDDRRD",
+    "tiles": [
+        "#####",
+        "#...#",
+        "#...#",
+        "#...#",
+        "#...#",
+        "#...#",
+        "#...#",
+        "#####"
+    ],
+    "player": {
+        "x": 2,
+        "y": 1
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 5
+        },
+        {
+            "x": 2,
+            "y": 4
+        },
+        {
+            "x": 2,
+            "y": 3
+        },
+        {
+            "x": 2,
+            "y": 2
+        }
+    ],
+    "targets": [
+        {
+            "x": 1,
+            "y": 6
+        },
+        {
+            "x": 3,
+            "y": 6
+        },
+        {
+            "x": 1,
+            "y": 1
+        },
+        {
+            "x": 3,
+            "y": 1
+        }
+    ]
+}

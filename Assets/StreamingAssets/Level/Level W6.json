@@ -1,0 +1,50 @@
+{
+    "id": "level_a69c2523e26d419099beccea9fda6e7c",
+    "displayName": "Level W6",
+    "createdAt": "2026-06-02T17:58:48.9352918+08:00",
+    "width": 6,
+    "height": 7,
+    "validationStatus": "有解",
+    "solutionActions": "UUUURRRDDLDLDLUUUDDRRUUDDLLURDRURUULRDDLU",
+    "tiles": [
+        "######",
+        "#....#",
+        "#.#..#",
+        "#....#",
+        "#...##",
+        "#..## ",
+        "####  "
+    ],
+    "player": {
+        "x": 1,
+        "y": 1
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 3
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 4
+        }
+    ],
+    "targets": [
+        {
+            "x": 1,
+            "y": 5
+        },
+        {
+            "x": 2,
+            "y": 5
+        },
+        {
+            "x": 3,
+            "y": 5
+        }
+    ]
+}

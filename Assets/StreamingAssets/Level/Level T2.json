@@ -1,0 +1,49 @@
+{
+    "id": "level_004de867240f4d49bbf1ebe671e22a16",
+    "displayName": "Level T2",
+    "createdAt": "2026-06-02T23:41:58.7715348+08:00",
+    "width": 5,
+    "height": 6,
+    "validationStatus": "有解",
+    "solutionActions": "LLDDDRLUUURRDDLURULDDDLU",
+    "tiles": [
+        "#####",
+        "#...#",
+        "#...#",
+        "#...#",
+        "#...#",
+        "#####"
+    ],
+    "player": {
+        "x": 3,
+        "y": 4
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 1
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 2,
+            "y": 3
+        }
+    ],
+    "targets": [
+        {
+            "x": 1,
+            "y": 4
+        },
+        {
+            "x": 1,
+            "y": 3
+        },
+        {
+            "x": 3,
+            "y": 1
+        }
+    ]
+}

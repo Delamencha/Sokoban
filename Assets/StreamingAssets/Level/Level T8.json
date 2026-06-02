@@ -1,0 +1,50 @@
+{
+    "id": "level_66a28b83d04c4217a985549a2475207f",
+    "displayName": "Level T8",
+    "createdAt": "2026-06-02T23:54:53.1516482+08:00",
+    "width": 6,
+    "height": 7,
+    "validationStatus": "有解",
+    "solutionActions": "UURRDDLULLDRURRUUULLDDUURRDDDLLUR",
+    "tiles": [
+        " #####",
+        " #...#",
+        " #.#.#",
+        "##...#",
+        "#....#",
+        "#....#",
+        "######"
+    ],
+    "player": {
+        "x": 2,
+        "y": 1
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 1
+        }
+    ],
+    "targets": [
+        {
+            "x": 3,
+            "y": 1
+        },
+        {
+            "x": 1,
+            "y": 2
+        },
+        {
+            "x": 4,
+            "y": 3
+        }
+    ]
+}

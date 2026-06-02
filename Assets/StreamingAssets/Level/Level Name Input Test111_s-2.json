@@ -1,0 +1,35 @@
+{
+    "id": "Level Name Input Test111_s-2",
+    "displayName": "Level Name Input Test111_s-2",
+    "createdAt": "2026-06-02T17:58:48.9352918+08:00",
+    "width": 8,
+    "height": 8,
+    "validationStatus": "有解",
+    "solutionActions": "",
+    "tiles": [
+        "########",
+        "#......#",
+        "#......#",
+        "#....###",
+        "#......#",
+        "#......#",
+        "#......#",
+        "########"
+    ],
+    "player": {
+        "x": 3,
+        "y": 2
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 4
+        }
+    ],
+    "targets": [
+        {
+            "x": 4,
+            "y": 5
+        }
+    ]
+}

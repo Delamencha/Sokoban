@@ -13,11 +13,15 @@ namespace Sokoban
         [SerializeField] private Transform contentRoot;
         [SerializeField] private LevelFileListItemView itemPrefab;
         [SerializeField] private TMP_Text emptyText;
+        [SerializeField] private TMP_Dropdown filterDropdown;
         [SerializeField] private Button newButton;
         [SerializeField] private Button deleteButton;
         [SerializeField] private Button copyButton;
         [SerializeField] private Button renameButton;
         [SerializeField] private Button editButton;
+        [SerializeField] private Button importButton;
+        [SerializeField] private Button exportButton;
+        [SerializeField] private Button validateButton;
         [SerializeField] private Button backButton;
 
         private readonly List<LevelFileEntry> entries = new List<LevelFileEntry>();
@@ -27,8 +31,12 @@ namespace Sokoban
         private Action<LevelFileEntry> onCopy;
         private Action<LevelFileEntry> onRename;
         private Action<LevelFileEntry> onEdit;
+        private Action onImport;
+        private Action<LevelFileEntry> onExport;
+        private Action<LevelFileEntry> onValidate;
         private Action onBack;
         private Action<LevelFileEntry> onSelectionChanged;
+        private Action<LevelListFilter> onFilterChanged;
         private Func<LevelFileEntry, bool> isInMainFlow;
         private int selectedIndex = -1;
 
@@ -38,24 +46,44 @@ namespace Sokoban
             Action<LevelFileEntry> onCopy,
             Action<LevelFileEntry> onRename,
             Action<LevelFileEntry> onEdit,
+            Action onImport,
+            Action<LevelFileEntry> onExport,
+            Action<LevelFileEntry> onValidate,
             Action onBack,
-            Action<LevelFileEntry> onSelectionChanged = null)
+            Action<LevelFileEntry> onSelectionChanged = null,
+            Action<LevelListFilter> onFilterChanged = null)
         {
             this.onNew = onNew;
             this.onDelete = onDelete;
             this.onCopy = onCopy;
             this.onRename = onRename;
             this.onEdit = onEdit;
+            this.onImport = onImport;
+            this.onExport = onExport;
+            this.onValidate = onValidate;
             this.onBack = onBack;
             this.onSelectionChanged = onSelectionChanged;
+            this.onFilterChanged = onFilterChanged;
 
             BindButton(newButton, () => this.onNew?.Invoke());
             BindButton(deleteButton, () => InvokeWithSelection(this.onDelete));
             BindButton(copyButton, () => InvokeWithSelection(this.onCopy));
             BindButton(renameButton, () => InvokeWithSelection(this.onRename));
             BindButton(editButton, () => InvokeWithSelection(this.onEdit));
+            BindButton(importButton, () => this.onImport?.Invoke());
+            BindButton(exportButton, () => InvokeWithSelection(this.onExport));
+            BindButton(validateButton, () => InvokeWithSelection(this.onValidate));
             BindButton(backButton, () => this.onBack?.Invoke());
+            ConfigureFilterDropdown();
             UpdateOperationButtons();
+        }
+
+        public void SetFilter(LevelListFilter filter)
+        {
+            if (filterDropdown != null)
+            {
+                filterDropdown.SetValueWithoutNotify((int)filter);
+            }
         }
 
         public void Show()
@@ -147,6 +175,9 @@ namespace Sokoban
             SetButtonInteractable(copyButton, hasSelection);
             SetButtonInteractable(renameButton, hasSelection);
             SetButtonInteractable(editButton, hasSelection);
+            SetButtonInteractable(importButton, true);
+            SetButtonInteractable(exportButton, hasSelection);
+            SetButtonInteractable(validateButton, hasSelection);
         }
 
         private bool IsInMainFlow(LevelFileEntry entry)
@@ -179,6 +210,11 @@ namespace Sokoban
             {
                 Transform child = contentRoot.GetChild(i);
                 if (emptyText != null && child == emptyText.transform)
+                {
+                    continue;
+                }
+
+                if (filterDropdown != null && child == filterDropdown.transform)
                 {
                     continue;
                 }
@@ -231,6 +267,29 @@ namespace Sokoban
             {
                 button.interactable = interactable;
             }
+        }
+
+        private void ConfigureFilterDropdown()
+        {
+            if (filterDropdown == null)
+            {
+                return;
+            }
+
+            filterDropdown.onValueChanged.RemoveAllListeners();
+            filterDropdown.options.Clear();
+            filterDropdown.options.Add(new TMP_Dropdown.OptionData("主流程关卡"));
+            filterDropdown.options.Add(new TMP_Dropdown.OptionData("未加入主流程"));
+            filterDropdown.options.Add(new TMP_Dropdown.OptionData("全部关卡"));
+            filterDropdown.SetValueWithoutNotify((int)LevelListFilter.All);
+            filterDropdown.onValueChanged.AddListener(value =>
+            {
+                LevelListFilter filter = value >= 0 && value <= (int)LevelListFilter.All
+                    ? (LevelListFilter)value
+                    : LevelListFilter.All;
+                onFilterChanged?.Invoke(filter);
+            });
+            filterDropdown.RefreshShownValue();
         }
     }
 }

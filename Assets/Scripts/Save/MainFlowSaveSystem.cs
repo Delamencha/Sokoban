@@ -97,7 +97,7 @@ namespace Sokoban
 
             MainFlowData data = new MainFlowData
             {
-                levelIdsInOrder = allEntries
+                levelIdsInOrder = LevelSaveSystem.SortEntriesByCreatedAtThenDisplayName(allEntries)
                     .Where(entry => entry != null && entry.level != null && !string.IsNullOrWhiteSpace(entry.level.id))
                     .Select(entry => entry.level.id)
                     .ToList()

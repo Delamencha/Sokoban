@@ -1,0 +1,50 @@
+{
+    "id": "level_336e46d4741d4a3d8bc104c76b760804",
+    "displayName": "Level W5",
+    "createdAt": "2026-06-02T17:58:48.9352918+08:00",
+    "width": 6,
+    "height": 7,
+    "validationStatus": "有解",
+    "solutionActions": "RUURRDDLULLDRURRUUULLDDUURRDDDLLUR",
+    "tiles": [
+        " #####",
+        " #...#",
+        " #.#.#",
+        "##...#",
+        "#....#",
+        "#....#",
+        "######"
+    ],
+    "player": {
+        "x": 1,
+        "y": 1
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 2,
+            "y": 1
+        },
+        {
+            "x": 3,
+            "y": 2
+        }
+    ],
+    "targets": [
+        {
+            "x": 1,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 1
+        },
+        {
+            "x": 4,
+            "y": 3
+        }
+    ]
+}

@@ -1,0 +1,41 @@
+{
+    "id": "level_8e23aec59013423b85097b4acba01e3e",
+    "displayName": "Level T3",
+    "createdAt": "2026-06-02T23:44:32.8047759+08:00",
+    "width": 6,
+    "height": 6,
+    "validationStatus": "有解",
+    "solutionActions": "LURRLDDRURUDLLUR",
+    "tiles": [
+        "  ####",
+        "###..#",
+        "#....#",
+        "#....#",
+        "##..##",
+        " #### "
+    ],
+    "player": {
+        "x": 2,
+        "y": 2
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 3
+        },
+        {
+            "x": 3,
+            "y": 2
+        }
+    ],
+    "targets": [
+        {
+            "x": 4,
+            "y": 4
+        },
+        {
+            "x": 4,
+            "y": 3
+        }
+    ]
+}

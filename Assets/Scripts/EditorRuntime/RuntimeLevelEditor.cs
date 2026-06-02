@@ -6,6 +6,7 @@ namespace Sokoban
 {
     public enum EditorTool
     {
+        None = -1,
         Floor,
         Wall,
         Empty,
@@ -13,6 +14,13 @@ namespace Sokoban
         Box,
         Target,
         EraseEntity
+    }
+
+    public enum EditorBrushMode
+    {
+        Normal,
+        FilledRectangle,
+        HollowRectangle
     }
 
     public class RuntimeLevelEditor
@@ -25,6 +33,9 @@ namespace Sokoban
         private LevelData editOperationSnapshot;
         private string editOperationSnapshotJson;
         private bool editOperationActive;
+        private Vector2Int rectangleStartPosition;
+        private Vector2Int rectangleEndPosition;
+        private bool rectangleBrushOperationActive;
 
         public RuntimeLevelEditor(BoardRenderer renderer, Action<string> setStatus)
         {
@@ -34,7 +45,9 @@ namespace Sokoban
         }
 
         public LevelData CurrentLevel { get; private set; }
-        public EditorTool ActiveTool { get; private set; } = EditorTool.Floor;
+        public EditorTool ActiveTool { get; private set; } = EditorTool.None;
+        public EditorBrushMode ActiveBrushMode { get; private set; } = EditorBrushMode.Normal;
+        public bool ShouldUseRectangleBrush => ActiveBrushMode != EditorBrushMode.Normal && IsTileTool(ActiveTool);
 
         public void SetLevel(LevelData level)
         {
@@ -48,7 +61,8 @@ namespace Sokoban
         {
             PushUndoHistory(CurrentLevel.Clone());
             CurrentLevel = LevelData.CreateBlank(width, height);
-            ActiveTool = EditorTool.Floor;
+            ActiveTool = EditorTool.None;
+            ActiveBrushMode = EditorBrushMode.Normal;
             Render();
             setStatus("已创建空白关卡。");
         }
@@ -57,6 +71,12 @@ namespace Sokoban
         {
             ActiveTool = tool;
             setStatus("当前工具：" + GetToolName(tool));
+        }
+
+        public void SetBrushMode(EditorBrushMode brushMode)
+        {
+            ActiveBrushMode = brushMode;
+            setStatus("当前画笔：" + GetBrushModeName(brushMode));
         }
 
         public bool TryPaintFromScreenPosition(Vector2 screenPosition)
@@ -70,6 +90,57 @@ namespace Sokoban
             Vector3 world = camera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, -camera.transform.position.z));
             Vector2Int grid = renderer.WorldToGrid(world);
             return TryPaint(grid);
+        }
+
+        public bool BeginBrushOperation(Vector2 screenPosition)
+        {
+            if (!ShouldUseRectangleBrush || !TryGetGridFromScreenPosition(screenPosition, out Vector2Int grid))
+            {
+                return false;
+            }
+
+            rectangleStartPosition = grid;
+            rectangleEndPosition = grid;
+            rectangleBrushOperationActive = true;
+            BeginEditOperation();
+            renderer.ShowRectanglePreview(rectangleStartPosition, rectangleEndPosition);
+            return true;
+        }
+
+        public void UpdateBrushOperation(Vector2 screenPosition)
+        {
+            if (!rectangleBrushOperationActive)
+            {
+                return;
+            }
+
+            if (TryGetGridFromScreenPosition(screenPosition, out Vector2Int grid))
+            {
+                rectangleEndPosition = grid;
+                renderer.ShowRectanglePreview(rectangleStartPosition, rectangleEndPosition);
+            }
+        }
+
+        public bool EndBrushOperation(Vector2 screenPosition)
+        {
+            if (!rectangleBrushOperationActive)
+            {
+                return false;
+            }
+
+            UpdateBrushOperation(screenPosition);
+            string beforeJson = JsonUtility.ToJson(CurrentLevel);
+            ApplyRectangle(rectangleStartPosition, rectangleEndPosition, ActiveBrushMode == EditorBrushMode.HollowRectangle);
+            bool changed = beforeJson != JsonUtility.ToJson(CurrentLevel);
+            EndEditOperation();
+            rectangleBrushOperationActive = false;
+            renderer.ClearPreview();
+            if (changed)
+            {
+                Render();
+            }
+
+            return changed;
         }
 
         public bool TryPaint(Vector2Int position)
@@ -128,6 +199,8 @@ namespace Sokoban
             editOperationSnapshot = null;
             editOperationSnapshotJson = string.Empty;
             editOperationActive = false;
+            rectangleBrushOperationActive = false;
+            renderer.ClearPreview();
         }
 
         public bool Undo()
@@ -153,12 +226,17 @@ namespace Sokoban
             editOperationSnapshot = null;
             editOperationSnapshotJson = string.Empty;
             editOperationActive = false;
+            rectangleBrushOperationActive = false;
+            renderer.ClearPreview();
         }
 
         private bool ApplyPaint(Vector2Int position)
         {
             switch (ActiveTool)
             {
+                case EditorTool.Floor:
+                    CurrentLevel.SetTile(position, LevelTile.Floor);
+                    break;
                 case EditorTool.Wall:
                     CurrentLevel.SetTile(position, LevelTile.Wall);
                     RemoveEntitiesAt(position);
@@ -189,11 +267,31 @@ namespace Sokoban
                     RemoveEntitiesAt(position);
                     break;
                 default:
-                    CurrentLevel.SetTile(position, LevelTile.Floor);
-                    break;
+                    return false;
             }
 
             return true;
+        }
+
+        private void ApplyRectangle(Vector2Int start, Vector2Int end, bool hollow)
+        {
+            int minX = Mathf.Min(start.x, end.x);
+            int maxX = Mathf.Max(start.x, end.x);
+            int minY = Mathf.Min(start.y, end.y);
+            int maxY = Mathf.Max(start.y, end.y);
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    if (hollow && x != minX && x != maxX && y != minY && y != maxY)
+                    {
+                        continue;
+                    }
+
+                    ApplyPaint(new Vector2Int(x, y));
+                }
+            }
         }
 
         public List<string> Validate()
@@ -290,10 +388,31 @@ namespace Sokoban
             }
         }
 
+        private bool TryGetGridFromScreenPosition(Vector2 screenPosition, out Vector2Int grid)
+        {
+            grid = new Vector2Int();
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return false;
+            }
+
+            Vector3 world = camera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, -camera.transform.position.z));
+            grid = renderer.WorldToGrid(world);
+            return CurrentLevel.IsInside(grid);
+        }
+
+        private static bool IsTileTool(EditorTool tool)
+        {
+            return tool == EditorTool.Floor || tool == EditorTool.Wall || tool == EditorTool.Empty;
+        }
+
         private static string GetToolName(EditorTool tool)
         {
             switch (tool)
             {
+                case EditorTool.None:
+                    return "未选择";
                 case EditorTool.Wall:
                     return "墙";
                 case EditorTool.Empty:
@@ -308,6 +427,19 @@ namespace Sokoban
                     return "擦除实体";
                 default:
                     return "地板";
+            }
+        }
+
+        private static string GetBrushModeName(EditorBrushMode brushMode)
+        {
+            switch (brushMode)
+            {
+                case EditorBrushMode.FilledRectangle:
+                    return "实心矩形";
+                case EditorBrushMode.HollowRectangle:
+                    return "空心矩形";
+                default:
+                    return "常规";
             }
         }
     }

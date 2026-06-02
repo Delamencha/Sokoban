@@ -1,0 +1,74 @@
+{
+    "id": "level_f47ccc1778014067a4cdf4e5d71114fb",
+    "displayName": "Level W3",
+    "createdAt": "2026-06-02T17:58:48.9352918+08:00",
+    "width": 7,
+    "height": 7,
+    "validationStatus": "有解",
+    "solutionActions": "UUULLDDDDLLUUURLDDDRRUULUURRRDDDLRUUULLLDLDRRRDRU",
+    "tiles": [
+        " ######",
+        "##....#",
+        "#.....#",
+        "#.....#",
+        "#.....#",
+        "#....##",
+        "###### "
+    ],
+    "player": {
+        "x": 5,
+        "y": 2
+    },
+    "boxes": [
+        {
+            "x": 2,
+            "y": 4
+        },
+        {
+            "x": 2,
+            "y": 3
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 4,
+            "y": 4
+        },
+        {
+            "x": 4,
+            "y": 3
+        },
+        {
+            "x": 4,
+            "y": 2
+        }
+    ],
+    "targets": [
+        {
+            "x": 1,
+            "y": 2
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 4
+        },
+        {
+            "x": 4,
+            "y": 4
+        },
+        {
+            "x": 5,
+            "y": 4
+        }
+    ]
+}

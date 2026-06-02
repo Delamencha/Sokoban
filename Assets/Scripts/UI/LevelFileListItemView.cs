@@ -11,6 +11,7 @@ namespace Sokoban
         [SerializeField] private TMP_Text indexText;
         [SerializeField] private TMP_Text levelNameText;
         [SerializeField] private TMP_Text sourceText;
+        [SerializeField] private TMP_Text validationStatusText;
         [SerializeField] private GameObject selectedIndicator;
         [SerializeField] private Image backgroundImage;
         [SerializeField] private Color normalColor = Color.white;
@@ -31,6 +32,11 @@ namespace Sokoban
             if (sourceText != null)
             {
                 sourceText.text = isInMainFlow ? "主流程" : "非主流程";
+            }
+
+            if (validationStatusText != null)
+            {
+                validationStatusText.text = LevelValidator.GetValidationStatusText(entry != null ? entry.level : null);
             }
 
             BindButton(onClick);
