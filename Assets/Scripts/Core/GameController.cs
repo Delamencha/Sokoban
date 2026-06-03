@@ -370,7 +370,7 @@ namespace Sokoban
 
         private void ShowMainFlowLevelListFromCommonMenu()
         {
-            ShowLevelList(false, LevelListFilter.MainFlow);
+            ShowLevelList(true, LevelListFilter.MainFlow);
         }
 
         private void ShowLevelList(bool allowFilter, LevelListFilter defaultFilter)
@@ -402,7 +402,7 @@ namespace Sokoban
             runtimeEditorView.Hide();
             SetLevelName("关卡列表");
             SetOperationHint(string.Empty);
-            SetStatus(allowFilter ? "当前显示全部关卡。" : "当前显示主流程关卡。");
+            SetStatus(GetLevelListFilterStatus(defaultFilter));
         }
 
         private void RebuildLevelList(LevelListFilter filter)
@@ -419,17 +419,19 @@ namespace Sokoban
         private void HandleLevelListFilterChanged(LevelListFilter filter)
         {
             RebuildLevelList(filter);
+            SetStatus(GetLevelListFilterStatus(filter));
+        }
+
+        private string GetLevelListFilterStatus(LevelListFilter filter)
+        {
             switch (filter)
             {
                 case LevelListFilter.NotInMainFlow:
-                    SetStatus("当前显示未加入主流程的关卡。");
-                    break;
+                    return "当前显示未加入主流程的关卡。";
                 case LevelListFilter.All:
-                    SetStatus("当前显示全部关卡。");
-                    break;
+                    return "当前显示全部关卡。";
                 default:
-                    SetStatus("当前显示主流程关卡。");
-                    break;
+                    return "当前显示主流程关卡。";
             }
         }
 

@@ -303,6 +303,8 @@ namespace Sokoban
             }
 
             seedInitializationChecked = true;
+            EnsureRuntimeIoDirectories();
+
             string markerPath = GetSeedInitializationMarkerPath();
             if (File.Exists(markerPath))
             {
@@ -352,6 +354,12 @@ namespace Sokoban
             }
 
             Debug.Log("Initialized built-in seed levels: " + copiedCount + " file(s) copied.");
+        }
+
+        private static void EnsureRuntimeIoDirectories()
+        {
+            Directory.CreateDirectory(GetImportDirectory());
+            Directory.CreateDirectory(GetExportDirectory());
         }
 
         private static string GetSeedLevelDirectory()
